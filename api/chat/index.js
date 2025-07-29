@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   console.log('Environment check:');
   console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
   console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
-  console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
   
   if (!process.env.OPENAI_API_KEY) {
     console.error('Missing OPENAI_API_KEY');
