@@ -129,43 +129,60 @@ module.exports = async (req, res) => {
 
     // Save/update conversation in Supabase
     console.log('Saving conversation to Supabase...');
-    if (conversation) {
-      // Update existing conversation
-      const { error: updateError } = await supabase
-        .from('Conversations')
-        .update({ 
-          messages: messages,
-          updated_at: new Date().toISOString()
-        })
-        .eq('conversation_id', conversationId);
-      
-      if (updateError) {
-        console.error('Supabase update error:', updateError);
-        res.status(500).json({ error: 'Database update failed: ' + updateError.message });
-        return;
+    console.log('Conversation exists:', !!conversation);
+    console.log('Messages count:', messages.length);
+    
+    try {
+      if (conversation) {
+        // Update existing conversation
+        console.log('Updating existing conversation...');
+        const { error: updateError } = await supabase
+          .from('Conversations')
+          .update({ 
+            messages: messages,
+            updated_at: new Date().toISOString()
+          })
+          .eq('conversation_id', conversationId);
+        
+        if (updateError) {
+          console.error('Supabase update error:', updateError);
+          res.status(500).json({ error: 'Database update failed: ' + updateError.message });
+          return;
+        }
+        console.log('Conversation updated successfully');
+      } else {
+        // Insert new conversation
+        console.log('Creating new conversation...');
+        const { error: insertError } = await supabase
+          .from('Conversations')
+          .insert({
+            conversation_id: conversationId,
+            messages: messages,
+            created_at: new Date().toISOString()
+          });
+        
+        if (insertError) {
+          console.error('Supabase insert error:', insertError);
+          res.status(500).json({ error: 'Database insert failed: ' + insertError.message });
+          return;
+        }
+        console.log('New conversation created successfully');
       }
-      console.log('Conversation updated successfully');
-    } else {
-      // Insert new conversation
-      const { error: insertError } = await supabase
-        .from('Conversations')
-        .insert({
-          conversation_id: conversationId,
-          messages: messages,
-          created_at: new Date().toISOString()
-        });
-      
-      if (insertError) {
-        console.error('Supabase insert error:', insertError);
-        res.status(500).json({ error: 'Database insert failed: ' + insertError.message });
-        return;
-      }
-      console.log('New conversation created successfully');
+    } catch (dbError) {
+      console.error('Database operation error:', dbError);
+      res.status(500).json({ error: 'Database operation failed: ' + dbError.message });
+      return;
     }
 
     res.status(200).json({ response: botMessage });
   } catch (error) {
     console.error('General error:', error);
-    res.status(500).json({ error: 'Failed to process request' });
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      details: error.message,
+      stack: error.stack
+    });
   }
 }; 
