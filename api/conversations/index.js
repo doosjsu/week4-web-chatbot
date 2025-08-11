@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Missing Supabase credentials');
     res.status(500).json({ error: 'Database credentials not configured' });
     return;
@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
   try {
     supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
   } catch (error) {
     console.error('Supabase client initialization error:', error);

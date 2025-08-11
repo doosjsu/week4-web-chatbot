@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   console.log('Environment check:');
   console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
   console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
-  console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
+  console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
   
   if (!process.env.OPENAI_API_KEY) {
     console.error('Missing OPENAI_API_KEY');
@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Missing Supabase credentials');
     res.status(500).json({ error: 'Database credentials not configured' });
     return;
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
   try {
     supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
   } catch (error) {
     console.error('Supabase client initialization error:', error);
@@ -57,8 +57,21 @@ module.exports = async (req, res) => {
   }
 
   console.log('Request body:', req.body);
+  console.log('Request headers:', req.headers);
   
-  const { message, conversationId } = req.body;
+  // Handle potential body parsing issues
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      console.error('Failed to parse request body:', e);
+      res.status(400).json({ error: 'Invalid JSON in request body' });
+      return;
+    }
+  }
+  
+  const { message, conversationId } = body;
   if (!message || !conversationId) {
     console.error('Missing required fields:', { message: !!message, conversationId: !!conversationId });
     res.status(400).json({ error: 'Missing message or conversationId' });
@@ -69,6 +82,7 @@ module.exports = async (req, res) => {
     console.log('Processing message for conversation ID:', conversationId);
     
     // Get existing conversation from Supabase
+    console.log('Fetching conversation from Supabase...');
     let { data: conversation, error: fetchError } = await supabase
       .from('Conversations')
       .select('messages')
@@ -77,9 +91,10 @@ module.exports = async (req, res) => {
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Supabase fetch error:', fetchError);
-      res.status(500).json({ error: 'Database fetch failed' });
+      res.status(500).json({ error: 'Database fetch failed: ' + fetchError.message });
       return;
     }
+    console.log('Supabase fetch completed');
 
     let messages = [];
     if (conversation) {
@@ -96,14 +111,24 @@ module.exports = async (req, res) => {
     messages.push({ role: 'user', content: message });
 
     // Get AI response
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: messages,
-    });
+    console.log('Calling OpenAI API...');
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: messages,
+      });
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
+      res.status(500).json({ error: 'OpenAI API failed: ' + openaiError.message });
+      return;
+    }
     const botMessage = completion.choices[0].message.content;
+    console.log('OpenAI response received');
     messages.push({ role: 'assistant', content: botMessage });
 
     // Save/update conversation in Supabase
+    console.log('Saving conversation to Supabase...');
     if (conversation) {
       // Update existing conversation
       const { error: updateError } = await supabase
@@ -116,9 +141,10 @@ module.exports = async (req, res) => {
       
       if (updateError) {
         console.error('Supabase update error:', updateError);
-        res.status(500).json({ error: 'Database update failed' });
+        res.status(500).json({ error: 'Database update failed: ' + updateError.message });
         return;
       }
+      console.log('Conversation updated successfully');
     } else {
       // Insert new conversation
       const { error: insertError } = await supabase
@@ -131,9 +157,10 @@ module.exports = async (req, res) => {
       
       if (insertError) {
         console.error('Supabase insert error:', insertError);
-        res.status(500).json({ error: 'Database insert failed' });
+        res.status(500).json({ error: 'Database insert failed: ' + insertError.message });
         return;
       }
+      console.log('New conversation created successfully');
     }
 
     res.status(200).json({ response: botMessage });
