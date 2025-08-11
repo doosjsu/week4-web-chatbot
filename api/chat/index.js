@@ -139,8 +139,7 @@ module.exports = async (req, res) => {
         const { error: updateError } = await supabase
           .from('Conversations')
           .update({ 
-            messages: messages,
-            updated_at: new Date().toISOString()
+            messages: messages
           })
           .eq('conversation_id', conversationId);
         
