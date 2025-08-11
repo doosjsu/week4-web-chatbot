@@ -186,12 +186,23 @@
             try {
                 const conversationId = getConversationId();
                 console.log('Sending message with conversation ID:', conversationId);
+                console.log('Making POST request to /api/chat');
+                
+                const requestBody = { message: input, conversationId };
+                console.log('Request body:', requestBody);
+                
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: input, conversationId })
+                    body: JSON.stringify(requestBody)
                 });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
                 const data = await response.json();
+                console.log('Response data:', data);
+                
                 if (data.response) {
                     return data.response;
                 } else {
