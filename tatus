@@ -1,0 +1,5 @@
+[33mcc75150[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix: Remove updated_at column reference that doesn't exist in database
+[33ma8c9f6e[m Add detailed error logging to debug 500 errors
+[33m40e03d7[m Improve error handling in main chatbot page
+[33m7e6d6e8[m Add test page for debugging API calls
+[33mf5b0238[m Add debugging logs to frontend to troubleshoot API calls
